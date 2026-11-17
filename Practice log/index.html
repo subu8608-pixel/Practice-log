@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>벨리댄스 연습일지 | Belly Dance Practice Log</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Hidden Canvas for capturing video frame thumbnails -->
+  <canvas id="snapshotCanvas" style="display: none;"></canvas>
+
+  <!-- Application Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-section">
+        <span class="brand-badge">CLINIC</span>
+        <h1 class="brand-title">벨리댄스 연습일지</h1>
+        <span class="brand-sub">동작 분석 및 피드백 로그</span>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnOpenHistory" class="btn btn-secondary btn-sm" title="저장된 일지 목록">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          일지 보관함 (<span id="sessionCountBadge">0</span>)
+        </button>
+
+        <button id="btnNewSession" class="btn btn-outline btn-sm" title="새 연습일지 시작">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+          새 일지 작성
+        </button>
+
+        <button id="btnExportText" class="btn btn-outline btn-sm" title="피드백 요약 복사">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          요약 복사
+        </button>
+
+        <button id="btnPrintReport" class="btn btn-outline btn-sm" title="피드백 리포트 인쇄 또는 PDF 저장">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          리포트 인쇄
+        </button>
+
+        <button id="btnBackupRestore" class="btn btn-outline btn-sm" title="데이터 백업 및 복원">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          백업/복원
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="app-container">
+
+    <!-- Left Column: Video Player & Practice Info -->
+    <section class="left-pane">
+      
+      <!-- Session Header & Meta -->
+      <div class="session-info-card">
+        <div class="session-header-row">
+          <input type="text" id="inputSessionTitle" class="session-title-input" placeholder="연습일지 제목 (예: 골반 드롭 & 쉬미 루틴 디테일 점검)" value="벨리댄스 테크닉 연습">
+          <button id="btnSaveSessionMeta" class="btn btn-secondary btn-sm">저장</button>
+        </div>
+
+        <div class="session-meta-row">
+          <div class="meta-field">
+            <label for="inputSessionDate">연습 일자:</label>
+            <input type="date" id="inputSessionDate">
+          </div>
+
+          <div class="meta-field">
+            <label for="selectSessionCategory">구분:</label>
+            <select id="selectSessionCategory">
+              <option value="베이직 테크닉">베이직 테크닉</option>
+              <option value="안무 루틴">안무 루틴</option>
+              <option value="작품 디테일">작품 디테일</option>
+              <option value="공연/콩쿠르 대비">공연/콩쿠르 대비</option>
+              <option value="스트레칭/근력">스트레칭/근력</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="focus-tags-row">
+          <span class="focus-tag-label">집중 체크포인트:</span>
+          <div id="focusPillsContainer" style="display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;"></div>
+          <input type="text" id="inputNewFocusTag" class="focus-input-sm" placeholder="+ 키워드 입력 후 Enter">
+        </div>
+      </div>
+
+      <!-- Video Player Viewport & Controls -->
+      <div class="player-card">
+        
+        <!-- Video Viewport -->
+        <div class="video-viewport" id="videoViewport">
+          <video id="mainVideo" class="main-video" playsinline></video>
+          <div class="video-overlay-badge" id="mirrorBadge">좌우 반전 (거울 모드)</div>
+
+          <!-- Empty State / File Uploader -->
+          <div class="video-empty-state" id="videoEmptyState">
+            <svg class="video-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+            <div class="video-empty-title">연습 영상을 불러오세요</div>
+            <div class="video-empty-desc">
+              여기를 클릭하거나 영상 파일을 드래그하여 올려놓으세요.<br>
+              (MP4, MOV, WEBM 지원)
+            </div>
+            <button class="btn btn-primary btn-sm" style="margin-top: 0.5rem;" onclick="document.getElementById('videoFileInput').click()">영상 파일 선택</button>
+            <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
+          </div>
+        </div>
+
+        <!-- Video Controls Bar -->
+        <div class="player-controls">
+          
+          <!-- Scrub / Seek Bar with Marker Pins -->
+          <div class="scrub-container" id="scrubContainer">
+            <div class="scrub-track" id="scrubTrack">
+              <div class="scrub-ab-range" id="scrubAbRange"></div>
+              <div class="scrub-progress" id="scrubProgress"></div>
+              <div class="scrub-markers" id="scrubMarkers"></div>
+            </div>
+            <div class="scrub-hover-time" id="scrubHoverTime">00:00.0</div>
+          </div>
+
+          <!-- Primary Controls Row -->
+          <div class="controls-primary-row">
+            
+            <!-- Left Group: Play/Pause, Step Frames -->
+            <div class="controls-left-group">
+              <button id="btnPlayPause" class="btn btn-player btn-player-primary" title="재생 / 일시정지 (스페이스바)">
+                <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                <span id="playText">재생</span>
+              </button>
+
+              <button id="btnStepBackSec" class="btn btn-player" title="1초 뒤로 (←)">-1s</button>
+              <button id="btnStepBackFrame" class="btn btn-player" title="0.1초 뒤로 ([)">-0.1s</button>
+              <button id="btnStepFwdFrame" class="btn btn-player" title="0.1초 앞으로 (])">+0.1s</button>
+              <button id="btnStepFwdSec" class="btn btn-player" title="1초 앞으로 (→)">+1s</button>
+            </div>
+
+            <!-- Center Group: Time Display -->
+            <div class="controls-center-group">
+              <div class="time-display">
+                <span class="current-time" id="timeCurrent">00:00.0</span>
+                <span>/</span>
+                <span id="timeDuration">00:00.0</span>
+              </div>
+            </div>
+
+            <!-- Right Group: Change Video & Primary Action -->
+            <div class="controls-right-group">
+              <button id="btnChangeVideo" class="btn btn-player" title="다른 영상으로 교체" style="display: none;">
+                영상 변경
+              </button>
+              
+              <button id="btnMarkFeedback" class="btn btn-mark-feedback" title="현재 시점 피드백 작성 (단축키 M 또는 N)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                현재 시점 피드백 작성
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Secondary Controls Row (AB Loop, Mirror, Speed) -->
+          <div class="controls-secondary-row">
+            
+            <!-- Mirror Toggle (Belly dance essential) -->
+            <button id="btnToggleMirror" class="btn btn-player" title="거울 모드 (좌우 반전)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><path d="M4 4l5 5"/></svg>
+              <span>거울 모드 (반전)</span>
+            </button>
+
+            <!-- A-B Repeat Controls -->
+            <div class="ab-group">
+              <span class="ab-label">구간 반복:</span>
+              <button id="btnSetA" class="btn btn-player btn-sm" title="현재 위치를 시작점 A로 설정">A 설정</button>
+              <button id="btnSetB" class="btn btn-player btn-sm" title="현재 위치를 종료점 B로 설정">B 설정</button>
+              <button id="btnToggleLoop" class="btn btn-player btn-sm" title="A-B 구간 무한 반복 활성화/해제">반복 켜기</button>
+              <button id="btnClearAB" class="btn btn-player btn-sm" title="A-B 구간 설정 초기화">초기화</button>
+              <span id="abDisplay" style="font-family: var(--font-mono); font-size: 0.72rem; color: #94a3b8; margin-left: 0.25rem;"></span>
+            </div>
+
+            <!-- Playback Speed Chips -->
+            <div class="control-pill-group" id="speedGroup">
+              <span style="font-size: 0.72rem; color: #64748b; padding-left: 0.35rem; padding-right: 0.2rem;">배속:</span>
+              <button data-speed="0.25">0.25x</button>
+              <button data-speed="0.5">0.5x</button>
+              <button data-speed="0.75">0.75x</button>
+              <button data-speed="1.0" class="active">1.0x</button>
+              <button data-speed="1.25">1.25x</button>
+            </div>
+
+          </div>
+
+          <!-- Keyboard Shortcuts Bar -->
+          <div class="shortcut-bar">
+            <span>단축키: <kbd>Space</kbd> 재생/일시정지</span>
+            <span><kbd>M</kbd> 또는 <kbd>N</kbd> 피드백 작성</span>
+            <span><kbd>[</kbd> / <kbd>]</kbd> 0.1초 미세이동</span>
+            <span><kbd>←</kbd> / <kbd>→</kbd> 1초 이동</span>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Practice Summary & Reflection Card -->
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h2 class="section-heading">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width: 18px; height: 18px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            오늘의 연습 총평 및 과제
+          </h2>
+          <span id="summarySaveStatus" style="font-size: 0.78rem; color: var(--text-muted);">자동 저장됨</span>
+        </div>
+
+        <textarea id="textareaSessionSummary" class="summary-textarea" placeholder="오늘 연습에서 잘된 부분, 개선할 점, 다음 연습 시 집중할 과제를 자유롭게 기록하세요.
+(예: 골반 드롭 시 상체 밸런스는 전보다 안정적이나, 왼쪽 쉬미 시 무릎 반동이 아직 과함. 다음 연습 시 거울 보며 코어 체결 유지할 것.)"></textarea>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Feedback List & Analysis Cards -->
+    <section class="right-pane">
+      
+      <div class="feedback-section-card">
+        
+        <div class="feedback-header">
+          <h2 class="section-heading">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width: 18px; height: 18px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            타임스탬프 피드백 목록
+          </h2>
+
+          <div class="feedback-counts">
+            <span>전체 <strong class="feedback-count-badge" id="countTotal">0</strong></span>
+            <span>보완 필요 <strong class="feedback-count-badge" style="color: #dc2626;" id="countPending">0</strong></span>
+            <span>개선 완료 <strong class="feedback-count-badge" style="color: #16a34a;" id="countResolved">0</strong></span>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="filter-tabs" id="statusFilterTabs">
+            <button class="filter-tab active" data-filter="all">전체</button>
+            <button class="filter-tab" data-filter="pending">보완 필요</button>
+            <button class="filter-tab" data-filter="resolved">개선 완료</button>
+          </div>
+
+          <select id="selectCategoryFilter" class="category-filter-select">
+            <option value="all">모든 부위/영역</option>
+            <option value="골반/힙">골반/힙</option>
+            <option value="상체/가슴">상체/가슴</option>
+            <option value="팔/손끝">팔/손끝</option>
+            <option value="시선/표정">시선/표정</option>
+            <option value="코어/자세">코어/자세</option>
+            <option value="박자/템포">박자/템포</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+
+        <!-- Feedback Cards Scrollable Container -->
+        <div class="feedback-list" id="feedbackListContainer">
+          <!-- Dynamically populated -->
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Modal: Add / Edit Feedback Note -->
+  <div class="modal-backdrop" id="feedbackModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="feedbackModalTitle">동작 교정 피드백 작성</h3>
+        <button id="btnCloseFeedbackModal" class="btn btn-outline btn-sm btn-icon" title="닫기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        
+        <!-- Captured Frame Preview & Timestamp -->
+        <div class="form-preview-row">
+          <img id="modalPreviewThumb" class="form-preview-thumb" alt="동작 캡처 썸네일">
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem;">해당 시점 타임스탬프</div>
+            <div class="form-preview-time" id="modalPreviewTimestamp">00:00.0</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">영상 프레임 자동 캡처됨</div>
+          </div>
+        </div>
+
+        <!-- Movement Area Category Chips -->
+        <div class="form-group">
+          <label class="form-label">집중 점검 부위 / 요소</label>
+          <div class="category-chip-group" id="modalCategoryChips">
+            <button type="button" class="chip-btn selected" data-cat="골반/힙">골반/힙</button>
+            <button type="button" class="chip-btn" data-cat="상체/가슴">상체/가슴</button>
+            <button type="button" class="chip-btn" data-cat="팔/손끝">팔/손끝</button>
+            <button type="button" class="chip-btn" data-cat="시선/표정">시선/표정</button>
+            <button type="button" class="chip-btn" data-cat="코어/자세">코어/자세</button>
+            <button type="button" class="chip-btn" data-cat="박자/템포">박자/템포</button>
+            <button type="button" class="chip-btn" data-cat="기타">기타</button>
+          </div>
+        </div>
+
+        <!-- Issue Description -->
+        <div class="form-group">
+          <label class="form-label" for="inputFeedbackIssue">교정할 부분 (문제 동작 및 보완점) *</label>
+          <textarea id="inputFeedbackIssue" class="form-textarea" placeholder="어떤 부분이 잘못되었는지 구체적으로 적어주세요.
+(예: 힙 드롭 시 지지하는 오른쪽 무릎이 펴지면서 골반 가동 범위가 좁아짐, 어깨가 위로 딸려 올라감)"></textarea>
+        </div>
+
+        <!-- Solution / Mental Cue -->
+        <div class="form-group">
+          <label class="form-label" for="inputFeedbackSolution">체크포인트 (의식할 팁 / 해결 방법)</label>
+          <textarea id="inputFeedbackSolution" class="form-textarea" style="min-height: 60px;" placeholder="동작을 수행할 때 마음속으로 상기할 큐포인트를 적어주세요.
+(예: 지지축 무릎은 부드럽게 굽힌 상태 유지, 턱 가볍게 당기고 가슴 먼저 들어 올리기)"></textarea>
+        </div>
+
+        <!-- Status Toggle -->
+        <div class="form-group">
+          <label class="status-toggle-label" style="font-size: 0.85rem;">
+            <input type="checkbox" id="inputFeedbackResolved">
+            <span>이 문제는 이미 개선되었거나 교정 완료됨</span>
+          </label>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnCancelFeedback" class="btn btn-secondary">취소</button>
+        <button id="btnSaveFeedback" class="btn btn-primary">피드백 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer: Saved Sessions History -->
+  <div class="drawer-backdrop" id="sessionDrawer">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <h3 class="drawer-title">연습일지 보관함</h3>
+        <button id="btnCloseDrawer" class="btn btn-outline btn-sm btn-icon" title="닫기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div style="padding: 1rem 1.5rem 0.5rem;">
+        <button id="btnDrawerNewSession" class="btn btn-primary btn-sm" style="width: 100%;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+          새 연습일지 시작하기
+        </button>
+      </div>
+
+      <div class="drawer-body" id="sessionListContainer">
+        <!-- Dynamically populated session cards -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Backup & Restore -->
+  <div class="modal-backdrop" id="backupModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">데이터 백업 및 복원</h3>
+        <button id="btnCloseBackupModal" class="btn btn-outline btn-sm btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+          작성한 모든 연습일지와 타임스탬프 피드백, 캡처 썸네일 데이터를 파일로 안전하게 내보내거나 가져올 수 있습니다. (대용량 원본 동영상 파일은 제외됩니다.)
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+          <button id="btnDownloadBackup" class="btn btn-secondary" style="justify-content: flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            데이터 백업 파일 다운로드 (.json)
+          </button>
+
+          <label class="btn btn-secondary" style="justify-content: flex-start; cursor: pointer;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            백업 파일 불러오기 (.json)
+            <input type="file" id="inputRestoreFile" accept=".json" style="display: none;">
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnDismissBackup" class="btn btn-secondary">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- JavaScript Modules -->
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
